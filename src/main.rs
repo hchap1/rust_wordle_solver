@@ -1,6 +1,7 @@
 mod regex_word_search;
 use regex_word_search::cull_to_pattern;
 use std::fs::read;
+use std::mem::replace;
 
 struct WordleGame {
     possibilities: Vec<String>,
@@ -11,18 +12,34 @@ struct WordleGame {
 
 impl WordleGame {
     fn new() -> Self {
-        read("dictionary.txt")
-
-fn main() {
-    let mut test: Vec<String> = vec![String::from("eggs"), String::from("balls")];
-    match cull_to_pattern(&String::from("..gs"), &mut test) {
-        Ok(_) => {
-            for word in test {
-                println!("{word}");
+        let mut dict_words: Vec<String> = vec![];
+        match read("words.txt") {
+            Ok(bytes) => {
+                let mut word: String = String::new();
+                for byte in bytes.iter() {
+                    if *byte != b'\n' {
+                        if byte.is_ascii() {
+                            word.push(*byte as char);
+                        }
+                    } else {
+                        dict_words.push(replace(&mut word, String::new()));
+                    }
+                }
             }
-        }
-        Err(e) => {
-            println!("{:?}", e);
+            Err(_) => {
+                println!("Could not read words.txt");
+            }
+        }   
+        WordleGame {
+            possibilities: dict_words,
+            confirmed: vec![],
+            present: vec![],
+            absent: vec![]
         }
     }
+}
+
+fn main() {
+    let mut game: WordleGame = WordleGame::new();
+    game.conf
 }
