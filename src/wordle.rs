@@ -1,3 +1,5 @@
+use std::fs::read_to_string;
+
 pub enum Colour {
     Green,
     Yellow,
@@ -34,21 +36,41 @@ impl Default for Letter {
 
 pub struct WordleGame {
     letters: [Letter; 26],
-    used_turns: usize
+    used_turns: usize,
+    words: Vec<String>
 }
 
 impl Default for WordleGame {
     fn default() -> Self {
         Self {
             letters: std::array::from_fn(|_| Letter {
-                in_word: false, known_positions: Vec::new(), known_invalids: Vec::new()
+                in_word: true, known_positions: Vec::new(), known_invalids: Vec::new()
             }),
-            used_turns: 0
+            used_turns: 0,
+            words: WordleGame::load()
         }
     }
 }
 
 impl WordleGame {
+    pub fn load() -> Vec<String> {
+        match read_to_string("wordle_words.txt") {
+            Ok(words) => words.lines().map(|line| line.to_string()).collect(),
+            Err(_) => panic!("Could not access wordle_words.txt!")
+        }
+    }
+
+    pub fn cli_information(&mut self, word: &str, results: &str) -> Result<(), String> {
+        let chars = word.chars().collect::<Vec<char>>();
+        let colours = results.chars().map(|x| match x {
+            'g' => Colour::Green,
+            'y' => Colour::Yellow,
+             _  => Colour::Gray
+        }).collect();
+
+        self.add_information(chars, colours)
+    }
+
     pub fn add_information(&mut self, word: Vec<char>, results: Vec<Colour>) -> Result<(), String> {
         self.used_turns += 1;
         for idx in 0..5 {
@@ -81,13 +103,29 @@ impl WordleGame {
         Ok(())
     }
 
-    pub fn is_match(&self, word: &String) -> bool {
-        let chars = word.chars().collect::<Vec<char>>();
-        word.char_indices().map(|(idx, c)| {
+    pub fn is_match(&self, word: &str) -> bool {
+        let chars: Vec<char> = word.chars().collect();
+        let is_valid = word.char_indices().map(|(idx, c)| {
             let i = char_to_num(c) as usize;
-            !(self.letters[i].known_invalids.contains(&idx) || !self.letters[i].in_word)
-        }).all(|b| b) && self.letters.iter().enumerate().map(|(i, letter)| {
-            letter.known_positions.iter().map(|idx| chars[*idx] == num_to_char(i as u8).unwrap()).all(|b| b)
-        }).all(|b| b)
+            let is_valid = !self.letters[i].known_invalids.contains(&idx);
+            let in_word = self.letters[i].in_word;
+            is_valid && in_word
+        }).all(|b| b);
+
+        let mut has_all_known_characters: bool = true;
+        'outer: for (idx, letter) in self.letters.iter().enumerate() {
+            for known_position in letter.known_positions.iter() {
+                if chars[*known_position] != num_to_char(idx as u8).unwrap() {
+                    has_all_known_characters = false;
+                    break 'outer;
+                }
+            }
+        }
+
+        is_valid && has_all_known_characters
+    }
+
+    pub fn calculate(&self) -> Vec<String> {
+        self.words.iter().filter_map(|word| if self.is_match(word) { Some(word.clone()) } else { None }).collect()
     }
 }
