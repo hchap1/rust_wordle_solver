@@ -1,13 +1,11 @@
 mod wordle;
+mod utility;
 mod application;
 
-use wordle::WordleGame;
+use application::Application;
 
-fn main() {
-    let mut game: WordleGame = WordleGame::default();
-    let _ = game.cli_information("hello", "bbbbb");
-    let _ = game.cli_information("world", "bbybb");
-    let _ = game.cli_information("crane", "bggbb");
-    let _ = game.cli_information("cloth", "bbbbb");
-    game.calculate().into_iter().for_each(|word| println!("{word}"));
+fn main() -> iced::Result {
+    iced::application("Wordle Solver", Application::update, Application::view)
+        .subscription(Application::subscription)
+        .run()
 }
